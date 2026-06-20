@@ -420,6 +420,48 @@ button { cursor: pointer; border: none; background: none; }
 .auth-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px 2px; }
 .auth-foot .auth-link { font-size: 11.5px; padding: 2px 4px; align-self: auto; }
 
+/* ======================================================================== */
+/* Mobile / responsive — sidebar becomes a scrollable top bar, grids stack   */
+/* ======================================================================== */
+@media (max-width: 760px) {
+  .app { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+
+  /* sidebar → sticky horizontal top bar */
+  .sidebar {
+    flex-direction: row; align-items: center; gap: 6px;
+    padding: 9px 12px; border-right: none; border-bottom: 1px solid var(--glass-border);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    position: sticky; top: 0; z-index: 30;
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .brand { padding: 0 6px 0 2px; flex: none; }
+  .brand .name { display: none; }              /* logo only, to save width */
+  .nav { flex-direction: row; gap: 4px; margin-top: 0; flex: none; }
+  .nav-item { padding: 8px 11px; white-space: nowrap; flex: none; }
+  .nav-sep, .nav-label, .sidebar-foot { display: none; }  /* secondary chrome: desktop-only for now */
+
+  /* main scrolls with the page */
+  .main { height: auto; overflow: visible; }
+  .main-inner { padding: 20px 16px 72px; }
+
+  .page-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page-head h1 { font-size: 22px; }
+  .head-actions { width: 100%; }
+
+  /* everything to a single column */
+  .triage, .energy-grid, .proj-grid, .detail-grid { grid-template-columns: 1fr; }
+  .panel + .panel { margin-top: 16px; }
+
+  .brief { padding: 18px 16px; }
+  .brief p { font-size: 13.5px; }
+  .trow { flex-wrap: wrap; }
+  .detail-head { gap: 14px; }
+  .detail-head .d-client { font-size: 20px; }
+  .detail-head .d-emoji { width: 48px; height: 48px; font-size: 24px; }
+  .asset-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .fb-item { flex-wrap: wrap; }
+}
+
 .pc-foot { display: flex; align-items: center; gap: 12px; }
 .progress { flex: 1; }
 .progress .p-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); font-weight: 540; margin-bottom: 5px; }
