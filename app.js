@@ -26,7 +26,8 @@
     const renamed = { 'Existential Dread Coffee': "Chad's Rash Cream Co." };
     let changed = false;
     (d.projects || []).forEach((p) => { if (renamed[p.client]) { p.client = renamed[p.client]; changed = true; } });
-    if (!Array.isArray(d.assets)) d.assets = [];   // assets added later — ensure the array exists
+    if (!Array.isArray(d.assets)) d.assets = [];       // assets added later — ensure the array exists
+    if (!Array.isArray(d.feedback)) d.feedback = [];   // feedback added later — ensure the array exists
     if (changed) { try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ } }
     return d;
   }
@@ -49,6 +50,7 @@
   let lastDeleted = null;    // { kind, item, index } — one-level undo buffer
   let authMode = 'login';    // 'login' | 'signup' | 'forgot'
   let authBusy = false, authErr = '', authMsg = '';
+  let fbType = 'idea';       // compose type for the feedback view
 
   /* ----------------------------------------------------------- lookups ---- */
   const projById  = (id) => data.projects.find((p) => p.id === id);
@@ -396,6 +398,7 @@ Follow up with the printer about minimum order quantities.`;
     if (view.name === 'project' && view.projectId) return projectDetailHTML(view.projectId);
     if (view.name === 'projects') return projectsHTML();
     if (view.name === 'energy') return energyHTML();
+    if (view.name === 'feedback') return feedbackHTML();
     return homeHTML();
   }
 
@@ -413,6 +416,7 @@ Follow up with the printer about minimum order quantities.`;
         ${nav('home', '🏠', 'Home', b.dueToday.length)}
         ${nav('projects', '📁', 'Projects', data.projects.length)}
         ${nav('energy', '⚡', 'Energy', openTasks)}
+        ${nav('feedback', '💬', 'Feedback', (data.feedback || []).filter((f) => f.status !== 'done').length)}
       </nav>
       <div class="nav-sep"></div>
       <div class="nav-label">Quick AI</div>
@@ -790,6 +794,43 @@ Follow up with the printer about minimum order quantities.`;
     </div>`;
   }
 
+  /* -------------------------------------------------------- feedback ------ */
+  const FB_TYPES  = [['idea', '💡', 'Idea'], ['bug', '🐛', 'Bug'], ['other', '💬', 'Other']];
+  const FB_STATUS = [['open', 'Open'], ['planned', 'Planned'], ['done', 'Done']];
+
+  function feedbackHTML() {
+    const items = [...(data.feedback || [])].sort((a, z) => {
+      const sd = (a.status === 'done' ? 1 : 0) - (z.status === 'done' ? 1 : 0);
+      if (sd) return sd;                                            // done items sink
+      return ((z.votes || []).length - (a.votes || []).length) || (new Date(z.at) - new Date(a.at));
+    });
+    const list = items.length
+      ? items.map(fbRow).join('')
+      : `<div class="col-empty" style="padding:26px"><span class="em">🙌</span>No feedback yet — be the first to drop a suggestion.</div>`;
+    return `
+      <div class="page-head"><div><h1>Feedback</h1><div class="sub">Bugs, ideas &amp; suggestions from the team — for the tool itself. Upvote what matters.</div></div></div>
+      <div class="panel fb-compose">
+        <div class="fb-types">${FB_TYPES.map(([v, emo, label]) => `<button type="button" class="fb-chip${fbType === v ? ' on' : ''}" data-fb-type="${v}">${emo} ${label}</button>`).join('')}</div>
+        <textarea id="fb-body" placeholder="What's on your mind? A bug, an idea, a 'wouldn't it be cool if…' (⌘+Enter to send)"></textarea>
+        <div class="row" style="justify-content:flex-end"><button class="btn primary" data-fb-submit>Send feedback</button></div>
+      </div>
+      <div class="fb-list">${list}</div>`;
+  }
+  function fbRow(f) {
+    const meId = me() ? me().id : null;
+    const voted = (f.votes || []).includes(meId);
+    const emo = (FB_TYPES.find((t) => t[0] === f.type) || ['', '💬'])[1];
+    const statusSel = `<select class="sel fb-status ${f.status}" data-set-fbstatus="${f.id}" aria-label="Status">${FB_STATUS.map(([v, l]) => `<option value="${v}"${v === f.status ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+    return `<div class="fb-item${f.status === 'done' ? ' done' : ''}">
+      <button type="button" class="fb-vote${voted ? ' on' : ''}" data-fb-vote="${f.id}" aria-label="Upvote" aria-pressed="${voted ? 'true' : 'false'}"><span class="fb-caret">▲</span><span class="fb-count">${(f.votes || []).length}</span></button>
+      <div class="fb-main">
+        <div class="fb-body">${esc(f.body)}</div>
+        <div class="fb-meta"><span class="fb-type">${emo} ${esc(f.type)}</span> · ${esc(firstName(memById(f.by)) || 'Someone')} · ${f.at ? relTime(f.at) : 'just now'}</div>
+      </div>
+      <div class="fb-actions">${statusSel}<button type="button" class="icon-btn danger" data-del-fb="${f.id}" aria-label="Delete feedback" title="Delete">🗑</button></div>
+    </div>`;
+  }
+
   /* ----------------------------------------------------------- modal ------ */
   function modalHTML() {
     if (!modal) return '';
@@ -862,6 +903,25 @@ Follow up with the printer about minimum order quantities.`;
     data.notes.push({ id:'n'+Date.now().toString(36), pid, who: me().id, body, at: new Date().toISOString() });
     save(); render(); toast('Note added');
   }
+  function addFeedback(body) {
+    body = (body || '').trim(); if (!body) return;
+    if (!data.feedback) data.feedback = [];
+    data.feedback.unshift({ id: 'fb' + Date.now().toString(36), type: fbType, body, by: me().id, at: new Date().toISOString(), status: 'open', votes: [] });
+    save(); render(); toast('Feedback sent — thanks! 🙌');
+  }
+  function voteFeedback(id) {
+    const f = (data.feedback || []).find((x) => x.id === id); if (!f) return;
+    f.votes = f.votes || [];
+    const uid = me().id, i = f.votes.indexOf(uid);
+    if (i >= 0) f.votes.splice(i, 1); else f.votes.push(uid);
+    save(); render();
+  }
+  function setFbStatus(id, val) {
+    const f = (data.feedback || []).find((x) => x.id === id); if (!f) return;
+    f.status = val; save(); render();
+  }
+  function deleteFeedback(id) { const r = removeFrom(data.feedback || [], id); if (!r) return; lastDeleted = { kind: 'feedback', item: r.item, index: r.index }; save(); render(); toastUndo('Feedback deleted'); }
+
   function addAsset(pid, url) {
     url = (url || '').trim(); if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;       // be forgiving about pasted links
@@ -947,7 +1007,7 @@ Follow up with the printer about minimum order quantities.`;
 
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout]');
     if (!t) return;
 
     if (t.dataset.authSwitch)                    { authSwitch(t.dataset.authSwitch); return; }
@@ -999,6 +1059,10 @@ Follow up with the printer about minimum order quantities.`;
     if (t.dataset.saveNote) { const id = t.dataset.saveNote; saveNoteEdit(id, elVal('en-body-'+id)); return; }
     if (t.dataset.delNote)  { deleteNote(t.dataset.delNote); return; }
     if (t.dataset.delAsset) { deleteAsset(t.dataset.delAsset); return; }
+    if (t.dataset.fbType)   { fbType = t.dataset.fbType; document.querySelectorAll('.fb-chip').forEach((c) => c.classList.toggle('on', c.dataset.fbType === fbType)); return; }
+    if (t.hasAttribute('data-fb-submit')) { addFeedback(elVal('fb-body')); return; }
+    if (t.dataset.fbVote)   { voteFeedback(t.dataset.fbVote); return; }
+    if (t.dataset.delFb)    { deleteFeedback(t.dataset.delFb); return; }
     if (t.hasAttribute('data-cancel-edit')) { editTaskId = editDlvId = editNoteId = null; render(); return; }
     if (t.hasAttribute('data-undo')) { undoDelete(); return; }
 
@@ -1027,8 +1091,9 @@ Follow up with the printer about minimum order quantities.`;
   /* delegated change (status selects, add-task energy) */
   document.addEventListener('change', (e) => {
     const el = e.target;
-    if (el.dataset.setStatus)  { setStatus(el.dataset.setStatus, el.value); return; }
-    if (el.dataset.setDstatus) { setDStatus(el.dataset.setDstatus, el.value); return; }
+    if (el.dataset.setStatus)   { setStatus(el.dataset.setStatus, el.value); return; }
+    if (el.dataset.setDstatus)  { setDStatus(el.dataset.setDstatus, el.value); return; }
+    if (el.dataset.setFbstatus) { setFbStatus(el.dataset.setFbstatus, el.value); return; }
   });
 
   /* delegated keydown (Enter to add) */
@@ -1074,6 +1139,7 @@ Follow up with the printer about minimum order quantities.`;
       else if (kind === 'dlv') saveDlvEdit(id, elVal('ed-title-'+id), elVal('ed-due-'+id));
       return;
     }
+    if (el.id === 'fb-body' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addFeedback(el.value); return; }
     if (el.id && el.id.indexOf('en-body-') === 0 && (e.metaKey || e.ctrlKey)) {
       e.preventDefault(); saveNoteEdit(el.id.slice(8), el.value); return;
     }

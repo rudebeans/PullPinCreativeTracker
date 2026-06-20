@@ -194,9 +194,17 @@
     { id: 'as7', pid: 'p5', title: 'Launch key art',             url: 'https://picsum.photos/seed/unicorn-key/480/360',    type: 'image',  by: 'pv', at: ago(1) },
   ];
 
+  /* Feedback = in-app suggestions / bug reports about the TOOL itself. Tiny
+     text records, shared with the whole team. type: idea | bug | other. */
+  const FEEDBACK = [
+    { id: 'fb1', type: 'idea',  body: 'Dark mode, please — my retinas have filed a formal complaint.',                         by: 'pv', at: ago(2), status: 'open',    votes: ['pv', 'dl', 'mc'] },
+    { id: 'fb2', type: 'idea',  body: 'Can we @mention people in notes so they actually get pinged?',                          by: 'dl', at: ago(1), status: 'planned', votes: ['rb', 'pv', 'sk', 'jr'] },
+    { id: 'fb3', type: 'bug',   body: 'The momentum ring made me reflect on my life choices. (Not a bug. Leaving it.)',       by: 'mc', at: ago(0), status: 'open',    votes: ['rb'] },
+  ];
+
   // expose (lowercase keys — this is the shape app.js reads)
   window.SEED = {
-    team: TEAM, projects: PROJECTS, tasks: TASKS, deliverables: DELIVERABLES, notes: NOTES, assets: ASSETS,
+    team: TEAM, projects: PROJECTS, tasks: TASKS, deliverables: DELIVERABLES, notes: NOTES, assets: ASSETS, feedback: FEEDBACK,
     _meta: { generatedAt: now().toISOString() },
   };
 })();

@@ -57,6 +57,9 @@ Everything is vanilla JS. Re-render-on-change keeps the code boring and legible.
   Drive, Loom, image URL…) and it auto-detects the type, previews images/videos
   as thumbnails, and opens the original in a tab. **It stores only the link, never
   the file** — so the app stays feather-light no matter how much creative flows.
+- **Feedback** — an in-app issue tracker for the tool itself. Anyone on the team
+  can post an Idea / Bug / Other, upvote what matters, and move items through
+  Open → Planned → Done. All tiny text, synced to the whole team.
 - **Full editing** — add / rename / **delete** tasks, notes, and deliverables;
   change a task's **assignee** and **due date**; advance deliverable stages.
   Every delete shows an **Undo**. All live, all persisted.
