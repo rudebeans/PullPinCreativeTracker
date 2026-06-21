@@ -339,7 +339,7 @@ Follow up with the printer about minimum order quantities.`;
   /* --------------------------------------------------- auth (login) UI ---- */
   function authCard(inner) {
     return `<div class="auth-wrap"><div class="auth-card">
-      <div class="brand-lg"><div class="logo">✦</div><div class="bl-text">PullPin Creative Tracker<small>Less management. More momentum.</small></div></div>
+      <div class="brand-lg"><div class="logo"><img src="PullPin_Icon_Web.png" alt="PullPin" /></div><div class="bl-text">PullPin Creative Tracker<small>Less management. More momentum.</small></div></div>
       ${inner}
     </div></div>`;
   }
@@ -414,7 +414,7 @@ Follow up with the printer about minimum order quantities.`;
         <span class="ic">${ic}</span><span>${label}</span>${badge!=null?`<span class="badge">${badge}</span>`:''}
       </button>`;
     return `<aside class="sidebar">
-      <div class="brand"><div class="logo">✦</div><div class="name">PullPin Creative Tracker<small>Less management. More momentum.</small></div></div>
+      <div class="brand"><div class="logo"><img src="PullPin_Icon_Web.png" alt="PullPin" /></div><div class="name">PullPin Creative Tracker<small>Less management. More momentum.</small></div></div>
       <nav class="nav">
         ${nav('home', '🏠', 'Home', b.dueToday.length)}
         ${nav('projects', '📁', 'Projects', data.projects.length)}
