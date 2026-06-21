@@ -28,5 +28,5 @@ class Server(socketserver.TCPServer):
 
 if __name__ == "__main__":
     with Server(("", PORT), NoCacheHandler) as httpd:
-        print(f"Creative Tracker -> http://localhost:{PORT}  (no-cache dev server)")
+        print(f"PullPin Pulse -> http://localhost:{PORT}  (no-cache dev server)")
         httpd.serve_forever()

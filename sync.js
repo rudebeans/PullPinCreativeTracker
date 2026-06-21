@@ -1,5 +1,5 @@
 /* ============================================================================
-   Creative Tracker — Cloud Sync (lean "shared state" mode)
+   PullPin Pulse — Cloud Sync (lean "shared state" mode)
    ----------------------------------------------------------------------------
    Turns the single-player prototype into a shared one for a small team, FREE,
    via Supabase. The entire app-state object lives in ONE row and is kept live

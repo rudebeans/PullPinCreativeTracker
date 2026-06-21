@@ -1,4 +1,4 @@
-# PullPin Creative Tracker
+# PullPin Pulse
 
 **Less management. More momentum.**
 A lightweight project tracker for creative teams — built to reduce cognitive

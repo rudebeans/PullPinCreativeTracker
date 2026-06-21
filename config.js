@@ -1,5 +1,5 @@
 /* ============================================================================
-   Creative Tracker — Cloud Sync config
+   PullPin Pulse — Cloud Sync config
    ----------------------------------------------------------------------------
    LEAVE BLANK  -> single-player (saves to this browser only). Great for solo
                    testing and the double-click `index.html` experience.

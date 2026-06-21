@@ -1,5 +1,5 @@
 /* ============================================================================
-   Creative Tracker — Auth (email + password, real profiles)
+   PullPin Pulse — Auth (email + password, real profiles)
    ----------------------------------------------------------------------------
    Reuses the single shared Supabase client (window.CTClient, from sync.js) so
    the logged-in session authorizes data sync under RLS.

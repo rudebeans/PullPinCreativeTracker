@@ -1,4 +1,4 @@
-# Share Creative Tracker with your team (free) — ~10 minutes
+# Share PullPin Pulse with your team (free) — ~10 minutes
 
 This turns the single-player prototype into a shared one: everyone opens one URL
 and sees the same live data ("team memory"). Total cost: **$0**.

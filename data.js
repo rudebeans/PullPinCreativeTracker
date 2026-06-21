@@ -1,5 +1,5 @@
 /* ============================================================================
-   Creative Tracker — Seed Data
+   PullPin Pulse — Seed Data
    ----------------------------------------------------------------------------
    Everything the prototype needs to feel alive on first open. Dates are
    generated RELATIVE to "now" so the demo always has things Due Today, no
