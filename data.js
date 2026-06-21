@@ -22,12 +22,12 @@
 
   // --- the studio (humor stays on the CLIENTS; the team feels real) ----------
   const TEAM = [
-    { id: 'rb', name: 'Reuben Bell',  role: 'Creative Director', initials: 'RB', color: '#6366f1', you: true },
-    { id: 'pv', name: 'Priya Varma',  role: 'Designer',          initials: 'PV', color: '#ec4899' },
-    { id: 'mc', name: 'Marco Conti',  role: 'Motion Designer',   initials: 'MC', color: '#f59e0b' },
-    { id: 'dl', name: 'Dana Lowe',    role: 'Copywriter',        initials: 'DL', color: '#10b981' },
-    { id: 'sk', name: 'Sam Kwon',     role: 'Producer',          initials: 'SK', color: '#0ea5e9' },
-    { id: 'jr', name: 'Jules Reyes',  role: 'Developer',         initials: 'JR', color: '#8b5cf6' },
+    { id: 'rb', name: 'Reuben Bell',  role: 'Creative Director', initials: 'RB', color: '#6366f1', you: true, bio: 'Runs on espresso and rough cuts. Believes the best brief fits on a napkin.' },
+    { id: 'pv', name: 'Priya Varma',  role: 'Designer',          initials: 'PV', color: '#ec4899', bio: 'Pixel-perfectionist. Will fight you over 2px of kerning (and win).' },
+    { id: 'mc', name: 'Marco Conti',  role: 'Motion Designer',   initials: 'MC', color: '#f59e0b', bio: 'Makes things move. Slightly too into easing curves.' },
+    { id: 'dl', name: 'Dana Lowe',    role: 'Copywriter',        initials: 'DL', color: '#10b981', bio: 'Puts words in the right order. Pun enthusiast, reformed semicolon abuser.' },
+    { id: 'sk', name: 'Sam Kwon',     role: 'Producer',          initials: 'SK', color: '#0ea5e9', bio: 'Keeps the trains running. Owns seven identical black tees.' },
+    { id: 'jr', name: 'Jules Reyes',  role: 'Developer',         initials: 'JR', color: '#8b5cf6', bio: 'Turns Figma into reality. Speaks fluent CSS and sarcasm.' },
   ];
 
   // --- projects (client names: humor-based, as requested) --------------------

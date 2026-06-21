@@ -52,6 +52,7 @@
   let authBusy = false, authErr = '', authMsg = '';
   let fbType = 'idea';       // compose type for the feedback view
   let menuOpen = false;      // mobile hamburger menu open?
+  let profErr = '';          // profile-edit error message
 
   /* ----------------------------------------------------------- lookups ---- */
   const projById  = (id) => data.projects.find((p) => p.id === id);
@@ -60,7 +61,7 @@
   function getTeam() {
     const A = window.CTAuth;
     if (A && A.configured && A.user && A.profiles && A.profiles.length) {
-      return A.profiles.map((p) => ({ id: p.id, name: p.name || p.email, initials: initialsOf(p.name || p.email), color: p.color || '#6366f1', you: p.id === A.user.id }));
+      return A.profiles.map((p) => ({ id: p.id, name: p.name || p.email, initials: initialsOf(p.name || p.email), color: p.color || '#6366f1', role: p.role || '', bio: p.bio || '', email: p.email || '', joinedAt: p.created_at || '', you: p.id === A.user.id }));
     }
     return data.team;
   }
@@ -197,7 +198,7 @@
   /* ----------------------------------------------- avatars / small UI ----- */
   function avatar(id, lg) {
     const m = memById(id); if (!m) return '';
-    return `<span class="av${lg ? ' lg' : ''}" style="background:${m.color}" title="${esc(m.name)} · ${esc(m.role)}">${m.initials}</span>`;
+    return `<span class="av av-btn${lg ? ' lg' : ''}" data-member="${id}" style="background:${m.color}" title="${esc(m.name)}${m.role ? ' · ' + esc(m.role) : ''}">${m.initials}</span>`;
   }
   function avatarStack(ids) {
     return `<span class="avatars">${ids.map((id) => avatar(id)).join('')}</span>`;
@@ -399,6 +400,7 @@ Follow up with the printer about minimum order quantities.`;
     if (view.name === 'project' && view.projectId) return projectDetailHTML(view.projectId);
     if (view.name === 'projects') return projectsHTML();
     if (view.name === 'energy') return energyHTML();
+    if (view.name === 'team') return teamHTML();
     if (view.name === 'feedback') return feedbackHTML();
     return homeHTML();
   }
@@ -407,8 +409,8 @@ Follow up with the printer about minimum order quantities.`;
   function sidebarHTML() {
     const b = bucketItems();
     const openTasks = data.tasks.filter((t) => t.status !== 'done').length;
-    const nav = (name, ic, label, badge) => `
-      <button class="nav-item${view.name===name||(name==='projects'&&view.name==='project')?' active':''}" data-nav="${name}">
+    const nav = (name, ic, label, badge, extraCls) => `
+      <button class="nav-item${extraCls?' '+extraCls:''}${view.name===name||(name==='projects'&&view.name==='project')?' active':''}" data-nav="${name}">
         <span class="ic">${ic}</span><span>${label}</span>${badge!=null?`<span class="badge">${badge}</span>`:''}
       </button>`;
     return `<aside class="sidebar">
@@ -417,6 +419,7 @@ Follow up with the printer about minimum order quantities.`;
         ${nav('home', '🏠', 'Home', b.dueToday.length)}
         ${nav('projects', '📁', 'Projects', data.projects.length)}
         ${nav('energy', '⚡', 'Energy', openTasks)}
+        ${nav('team', '👥', 'Team', getTeam().length, 'nav-team')}
         ${nav('feedback', '💬', 'Feedback', (data.feedback || []).filter((f) => f.status !== 'done').length)}
       </nav>
       <button class="sb-menu-btn" data-menu-toggle aria-label="Menu" aria-expanded="${menuOpen}">☰</button>
@@ -449,6 +452,7 @@ Follow up with the printer about minimum order quantities.`;
     if (!menuOpen) return '';
     return `<div class="mm-scrim" data-menu-close></div>
       <div class="mobile-menu">
+        <button class="mm-item" data-nav="team"><span class="ic">👥</span> Team</button>
         <button class="mm-item" data-open="transcript"><span class="ic">✨</span> Transcript → Tasks</button>
         <div class="mm-sep"></div>
         <div class="mm-label">The Studio</div>
@@ -850,9 +854,67 @@ Follow up with the printer about minimum order quantities.`;
     </div>`;
   }
 
+  /* ------------------------------------------------------------- team ----- */
+  function teamHTML() {
+    const team = getTeam();
+    const cards = team.map((m) => `
+      <button class="member-card" data-member="${m.id}">
+        <span class="av-xl" style="background:${m.color}">${m.initials}</span>
+        <div class="mc-name">${esc(m.name)}${m.you ? ' <span class="mc-you">You</span>' : ''}</div>
+        <div class="mc-role">${esc(m.role || '—')}</div>
+      </button>`).join('');
+    return `
+      <div class="page-head"><div><h1>Team</h1><div class="sub">${team.length} ${team.length===1?'member':'members'} · tap anyone to see their profile</div></div></div>
+      <div class="member-grid">${cards}</div>`;
+  }
+  function fmtJoined(iso) { try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }); } catch (e) { return ''; } }
+  function memberWorkload(id) {
+    const open = data.tasks.filter((t) => t.who === id && t.status !== 'done').length;
+    const pids = new Set();
+    data.tasks.forEach((t) => { if (t.who === id) pids.add(t.pid); });
+    data.projects.forEach((p) => { if ((p.team || []).includes(id)) pids.add(p.id); });
+    return { open, projects: pids.size };
+  }
+  function memberModalHTML(m) {
+    if (modal.editing) {
+      return `<div class="scrim" data-close-modal><div class="modal member-modal" data-stop>
+        <div class="modal-head"><span class="spark">👤</span><h3>Edit profile</h3><button class="x" data-close-modal>×</button></div>
+        <div class="modal-body">
+          <label class="prof-label">Name</label>
+          <input id="prof-name" class="prof-input" value="${esc(m.name)}" autocomplete="off" />
+          <label class="prof-label">Role</label>
+          <input id="prof-role" class="prof-input" value="${esc(m.role || '')}" placeholder="e.g. Designer, Copywriter…" autocomplete="off" />
+          <label class="prof-label">Bio</label>
+          <textarea id="prof-bio" class="prof-input" rows="3" placeholder="A line or two about you">${esc(m.bio || '')}</textarea>
+          ${profErr ? `<div class="auth-err">${esc(profErr)}</div>` : ''}
+        </div>
+        <div class="modal-foot"><button class="btn" data-cancel-profile>Cancel</button><button class="btn primary" data-save-profile="${m.id}">Save</button></div>
+      </div></div>`;
+    }
+    const wl = memberWorkload(m.id);
+    return `<div class="scrim" data-close-modal><div class="modal member-modal" data-stop>
+      <div class="modal-head"><span class="spark">👤</span><h3>Profile</h3><button class="x" data-close-modal>×</button></div>
+      <div class="modal-body">
+        <div class="member-hero">
+          <span class="av-xl" style="background:${m.color}">${m.initials}</span>
+          <div><div class="mh-name">${esc(m.name)}${m.you ? ' <span class="mc-you">You</span>' : ''}</div>
+          <div class="mh-role">${m.role ? esc(m.role) : '<span class="muted">No role set</span>'}</div></div>
+        </div>
+        <div class="member-fields">
+          ${m.email ? `<div class="mf"><span class="mf-k">Email</span><span class="mf-v">${esc(m.email)}</span></div>` : ''}
+          ${m.joinedAt ? `<div class="mf"><span class="mf-k">Joined</span><span class="mf-v">${esc(fmtJoined(m.joinedAt))}</span></div>` : ''}
+          <div class="mf"><span class="mf-k">Workload</span><span class="mf-v">${wl.open} open task${wl.open!==1?'s':''} · ${wl.projects} project${wl.projects!==1?'s':''}</span></div>
+        </div>
+        <div class="member-bio">${m.bio ? esc(m.bio) : '<span class="muted">No bio yet.</span>'}</div>
+        ${m.you ? `<button class="btn primary" data-edit-profile style="margin-top:16px;width:100%;justify-content:center">Edit my profile</button>` : ''}
+      </div>
+    </div></div>`;
+  }
+
   /* ----------------------------------------------------------- modal ------ */
   function modalHTML() {
     if (!modal) return '';
+    if (modal.type === 'member') { const m = getTeam().find((x) => x.id === modal.id); return m ? memberModalHTML(m) : ''; }
     if (modal.type === 'transcript') {
       const ex = modal.extracted || [];
       const exHTML = ex.length ? `<div class="extracted">
@@ -1024,13 +1086,42 @@ Follow up with the printer about minimum order quantities.`;
   }
   async function doLogout() { menuOpen = false; authMode = 'login'; authBusy = false; authErr = ''; authMsg = ''; await window.CTAuth.signOut(); }
 
+  async function saveProfile(id) {
+    const name = (elVal('prof-name') || '').trim();
+    const role = (elVal('prof-role') || '').trim();
+    const bio = (elVal('prof-bio') || '').trim();
+    if (!name) { profErr = 'Name is required.'; render(); return; }
+    const A = window.CTAuth;
+    if (A && A.configured && A.user) {                 // cloud profile
+      try {
+        await A.updateMyProfile({ name, role, bio });
+        if (modal) modal.editing = false; profErr = ''; render(); toast('Profile updated');
+      } catch (e) {
+        const msg = (e && e.message) || String(e);
+        profErr = /could not find|does not exist/i.test(msg)
+          ? 'Add the role & bio columns first — run the 2-line SQL I gave you, then try again.'
+          : msg;
+        render();
+      }
+    } else {                                            // demo / local profile
+      const meMember = data.team.find((mm) => mm.you);
+      if (meMember) { meMember.name = name; meMember.role = role; meMember.bio = bio; meMember.initials = initialsOf(name); }
+      save(); if (modal) modal.editing = false; profErr = ''; render(); toast('Profile updated');
+    }
+  }
+
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
     if (!t) return;
 
     if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
     if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
+
+    if (t.dataset.member)            { menuOpen = false; modal = { type: 'member', id: t.dataset.member, editing: false }; profErr = ''; render(); return; }
+    if (t.hasAttribute('data-edit-profile'))   { if (modal) modal.editing = true; profErr = ''; render(); return; }
+    if (t.hasAttribute('data-cancel-profile')) { if (modal) modal.editing = false; profErr = ''; render(); return; }
+    if (t.dataset.saveProfile)       { saveProfile(t.dataset.saveProfile); return; }
 
     if (t.dataset.authSwitch)                    { authSwitch(t.dataset.authSwitch); return; }
     if (t.hasAttribute('data-auth-submit'))      { doAuthSubmit(); return; }

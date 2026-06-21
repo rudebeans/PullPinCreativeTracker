@@ -26,7 +26,7 @@
     user: null,
     profiles: [],
     recovery: false,
-    start, signIn, signUp, signOut, resetPassword, updatePassword,
+    start, signIn, signUp, signOut, resetPassword, updatePassword, updateMyProfile,
   });
 
   if (!configured) return; // single-player / local: no auth gate
@@ -35,9 +35,17 @@
 
   async function loadProfiles() {
     try {
-      const { data, error } = await C.from('profiles').select('id,email,name,color').order('created_at', { ascending: true });
+      // select('*') is forward-compatible: picks up role/bio columns once they exist
+      const { data, error } = await C.from('profiles').select('*').order('created_at', { ascending: true });
       if (!error && data) CTAuth.profiles = data;
     } catch (e) { /* roster is best-effort */ }
+  }
+  // update the signed-in user's own profile row (RLS allows only your own)
+  async function updateMyProfile(fields) {
+    const { error } = await C.from('profiles').update(fields).eq('id', CTAuth.user.id);
+    if (error) throw error;
+    await loadProfiles();
+    notify();
   }
 
   async function applySession(session) {

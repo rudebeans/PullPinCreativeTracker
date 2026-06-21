@@ -382,6 +382,31 @@ button { cursor: pointer; border: none; background: none; }
 .asset-title { flex: 1; font-size: 12px; font-weight: 540; color: var(--ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .asset-title:hover { color: var(--accent); }
 
+/* ---- team + member profiles --------------------------------------------- */
+.av-btn { cursor: pointer; }
+.av-btn:hover { box-shadow: 0 0 0 2px var(--panel, #fff), 0 0 0 4px var(--accent-soft); }
+.av-xl { width: 64px; height: 64px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 700; letter-spacing: .02em; flex: none; box-shadow: var(--sheen); }
+
+.member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.member-card { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 22px 16px; background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--glass-border); border-radius: var(--radius); box-shadow: var(--shadow), var(--sheen); transition: transform .1s, box-shadow .14s; }
+.member-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(60,40,90,.10), 0 18px 44px rgba(60,40,90,.16), var(--sheen); }
+.mc-name { font-weight: 640; font-size: 14px; letter-spacing: -.01em; }
+.mc-role { font-size: 12px; color: var(--ink-3); font-weight: 520; }
+.mc-you { font-size: 10px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; vertical-align: middle; }
+
+.member-modal .modal-body { padding-top: 20px; }
+.member-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.mh-name { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+.mh-role { font-size: 13.5px; color: var(--ink-2); font-weight: 530; margin-top: 2px; }
+.member-fields { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.mf { display: flex; gap: 12px; font-size: 13px; }
+.mf-k { width: 78px; color: var(--ink-3); font-weight: 560; flex: none; }
+.mf-v { color: var(--ink); font-weight: 520; }
+.member-bio { font-size: 13.5px; color: var(--ink); line-height: 1.55; margin-top: 14px; }
+.prof-label { display: block; font-size: 11px; font-weight: 640; color: var(--ink-3); letter-spacing: .03em; text-transform: uppercase; margin: 12px 0 5px; }
+.prof-input { width: 100%; border: 1px solid var(--glass-border); background: rgba(255,255,255,.55); border-radius: 11px; padding: 10px 12px; outline: none; font-size: 14px; resize: vertical; transition: border-color .14s, box-shadow .14s; }
+.prof-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: rgba(255,255,255,.85); }
+
 /* ---- feedback (in-app issue tracker) ------------------------------------- */
 .fb-compose { display: flex; flex-direction: column; gap: 11px; margin-bottom: 18px; }
 .fb-types { display: flex; gap: 8px; }
@@ -452,7 +477,7 @@ button { cursor: pointer; border: none; background: none; }
   .nav { flex-direction: row; gap: 4px; margin-top: 0; flex: none; }
   .nav-item { width: auto; padding: 8px 9px; white-space: nowrap; flex: none; gap: 6px; }
   .nav .nav-item span:not(.ic) { display: none; }   /* icon-only tab bar; labels + counts live inside each section */
-  .nav-sep, .nav-label, .sidebar-foot, .qa-trigger { display: none; }  /* desktop secondary → lives in the hamburger menu */
+  .nav-sep, .nav-label, .sidebar-foot, .qa-trigger, .nav-team { display: none; }  /* desktop secondary → lives in the hamburger menu */
 
   /* hamburger, pinned right */
   .sb-menu-btn { display: grid; place-items: center; margin-left: auto; flex: none; width: 38px; height: 38px; border-radius: 10px; font-size: 16px; color: var(--ink-2); border: 1px solid var(--glass-border); background: rgba(255,255,255,.5); }
