@@ -51,6 +51,7 @@
   let authMode = 'login';    // 'login' | 'signup' | 'forgot'
   let authBusy = false, authErr = '', authMsg = '';
   let fbType = 'idea';       // compose type for the feedback view
+  let menuOpen = false;      // mobile hamburger menu open?
 
   /* ----------------------------------------------------------- lookups ---- */
   const projById  = (id) => data.projects.find((p) => p.id === id);
@@ -390,7 +391,7 @@ Follow up with the printer about minimum order quantities.`;
       if (A.ready && !authBusy) { const f = app.querySelector('input'); if (f) f.focus(); }
       return;
     }
-    app.innerHTML = `<div class="app">${sidebarHTML()}<main class="main"><div class="main-inner">${pageHTML()}</div></main></div>` + modalHTML();
+    app.innerHTML = `<div class="app">${sidebarHTML()}<main class="main"><div class="main-inner">${pageHTML()}</div></main></div>` + modalHTML() + mobileMenuHTML();
     if (refocusId) { const el = document.getElementById(refocusId); if (el) { el.focus(); } refocusId = null; }
   }
 
@@ -418,9 +419,10 @@ Follow up with the printer about minimum order quantities.`;
         ${nav('energy', '⚡', 'Energy', openTasks)}
         ${nav('feedback', '💬', 'Feedback', (data.feedback || []).filter((f) => f.status !== 'done').length)}
       </nav>
+      <button class="sb-menu-btn" data-menu-toggle aria-label="Menu" aria-expanded="${menuOpen}">☰</button>
       <div class="nav-sep"></div>
       <div class="nav-label">Quick AI</div>
-      <button class="nav-item" data-open="transcript"><span class="ic">✨</span><span>Transcript → Tasks</span></button>
+      <button class="nav-item qa-trigger" data-open="transcript"><span class="ic">✨</span><span>Transcript → Tasks</span></button>
       <div class="sidebar-foot">
         <div class="nav-label">The Studio</div>
         <div class="team-row">${avatarStack(getTeam().map((m)=>m.id))}<span class="muted" style="font-size:12px">${getTeam().length} ${getTeam().length===1?'person':'people'}</span></div>
@@ -437,7 +439,24 @@ Follow up with the printer about minimum order quantities.`;
     if (!window.CTSync) return '';
     const s = window.CTSync.status || (window.CTSync.configured ? 'connecting' : 'local');
     const map = { synced: 'Synced · shared', saving: 'Saving…', connecting: 'Connecting…', offline: 'Offline — local', local: 'Local only' };
-    return `<div id="sync-status" class="sync-status" data-state="${s}" title="${window.CTSync.configured ? 'Changes sync to your team in real time' : 'Single-player — add Supabase keys in config.js to share with your team'}"><span class="ss-dot"></span><span class="ss-text">${map[s] || 'Local only'}</span></div>`;
+    return `<div class="sync-status" data-state="${s}" title="${window.CTSync.configured ? 'Changes sync to your team in real time' : 'Single-player — add Supabase keys in config.js to share with your team'}"><span class="ss-dot"></span><span class="ss-text">${map[s] || 'Local only'}</span></div>`;
+  }
+
+  // mobile-only dropdown housing the secondary sidebar content (Quick AI, team,
+  // sync status, logout, reset). Rendered as a viewport-fixed overlay so it's
+  // never clipped by the top bar's overflow/blur. Only appears when menuOpen.
+  function mobileMenuHTML() {
+    if (!menuOpen) return '';
+    return `<div class="mm-scrim" data-menu-close></div>
+      <div class="mobile-menu">
+        <button class="mm-item" data-open="transcript"><span class="ic">✨</span> Transcript → Tasks</button>
+        <div class="mm-sep"></div>
+        <div class="mm-label">The Studio</div>
+        <div class="team-row" style="padding:5px 8px">${avatarStack(getTeam().map((m)=>m.id))}<span class="muted" style="font-size:12px">${getTeam().length} ${getTeam().length===1?'person':'people'}</span></div>
+        ${syncStatusHTML()}
+        ${authFootHTML()}
+        <button class="mm-item" data-reset><span class="ic">↺</span> Reset demo</button>
+      </div>`;
   }
 
   /* ------------------------------------------------------------- home ----- */
@@ -1003,12 +1022,15 @@ Follow up with the printer about minimum order quantities.`;
     try { await window.CTAuth.updatePassword(pw); authBusy = false; }
     catch (e) { authBusy = false; authErr = friendlyAuthErr(e); render(); }
   }
-  async function doLogout() { authMode = 'login'; authBusy = false; authErr = ''; authMsg = ''; await window.CTAuth.signOut(); }
+  async function doLogout() { menuOpen = false; authMode = 'login'; authBusy = false; authErr = ''; authMsg = ''; await window.CTAuth.signOut(); }
 
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close]');
     if (!t) return;
+
+    if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
+    if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
 
     if (t.dataset.authSwitch)                    { authSwitch(t.dataset.authSwitch); return; }
     if (t.hasAttribute('data-auth-submit'))      { doAuthSubmit(); return; }
@@ -1019,11 +1041,11 @@ Follow up with the printer about minimum order quantities.`;
     if (t.hasAttribute('data-stop')) { /* clicks inside modal shouldn't close it */ if (e.target===t) {} }
     if (t.hasAttribute('data-close-modal') && (e.target.hasAttribute('data-close-modal'))) { modal=null; render(); return; }
 
-    if (t.dataset.nav)         { view.name = t.dataset.nav; view.projectId = null; render(); return; }
-    if (t.dataset.openProject) { view.name = 'project'; view.projectId = t.dataset.openProject; if (modal) modal=null; render(); return; }
+    if (t.dataset.nav)         { menuOpen = false; view.name = t.dataset.nav; view.projectId = null; render(); return; }
+    if (t.dataset.openProject) { menuOpen = false; view.name = 'project'; view.projectId = t.dataset.openProject; if (modal) modal=null; render(); return; }
     if (t.dataset.toggle)      { toggleTask(t.dataset.toggle); return; }
 
-    if (t.dataset.open === 'transcript') { modal = { type:'transcript', text:'', extracted:[] }; render(); const x=document.getElementById('transcript-text'); if(x)x.focus(); return; }
+    if (t.dataset.open === 'transcript') { menuOpen = false; modal = { type:'transcript', text:'', extracted:[] }; render(); const x=document.getElementById('transcript-text'); if(x)x.focus(); return; }
     if (t.hasAttribute('data-fill-sample')) { modal.text = SAMPLE_TRANSCRIPT; modal.extracted = []; render(); return; }
     if (t.hasAttribute('data-extract')) {
       const txt = (document.getElementById('transcript-text')||{}).value || '';
@@ -1082,7 +1104,7 @@ Follow up with the printer about minimum order quantities.`;
         Object.keys(data).forEach((k)=>delete data[k]);
         Object.assign(data, fresh);
         if (window.__summaries) window.__summaries = {};
-        save(); view.name='home'; view.projectId=null; render(); toast('Demo data reset ↺');
+        menuOpen = false; save(); view.name='home'; view.projectId=null; render(); toast('Demo data reset ↺');
       }
       return;
     }

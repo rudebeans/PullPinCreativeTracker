@@ -44,11 +44,11 @@
   }
   function setStatus(s) {
     CTSync.status = s;
-    const el = document.getElementById('sync-status');
-    if (!el) return;
-    el.dataset.state = s;
-    const txt = el.querySelector('.ss-text');
-    if (txt) txt.textContent = label(s);
+    document.querySelectorAll('.sync-status').forEach((el) => {
+      el.dataset.state = s;
+      const txt = el.querySelector('.ss-text');
+      if (txt) txt.textContent = label(s);
+    });
   }
 
   if (!configured) {
