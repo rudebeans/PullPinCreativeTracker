@@ -431,10 +431,16 @@ Follow up with the printer about minimum order quantities.`;
         ${syncStatusHTML()}
         ${authFootHTML()}
         <div class="foot-actions">
+          ${themeToggleHTML()}
           <button class="ghost-btn" data-reset>↺ Reset demo</button>
         </div>
       </div>
     </aside>`;
+  }
+
+  function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
+  function themeToggleHTML() {
+    return `<button class="ghost-btn" data-theme-toggle>${currentTheme() === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>`;
   }
 
   function syncStatusHTML() {
@@ -458,6 +464,7 @@ Follow up with the printer about minimum order quantities.`;
         <div class="team-row" style="padding:5px 8px">${avatarStack(getTeam().map((m)=>m.id))}<span class="muted" style="font-size:12px">${getTeam().length} ${getTeam().length===1?'person':'people'}</span></div>
         ${syncStatusHTML()}
         ${authFootHTML()}
+        <button class="mm-item" data-theme-toggle><span class="ic">${currentTheme() === 'dark' ? '☀️' : '🌙'}</span> ${currentTheme() === 'dark' ? 'Light mode' : 'Dark mode'}</button>
         <button class="mm-item" data-reset><span class="ic">↺</span> Reset demo</button>
       </div>`;
   }
@@ -1111,11 +1118,17 @@ Follow up with the printer about minimum order quantities.`;
 
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-theme-toggle],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
     if (!t) return;
 
     if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
     if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
+    if (t.hasAttribute('data-theme-toggle')) {
+      const nx = currentTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nx);
+      try { localStorage.setItem('pp-theme', nx); } catch (e) { /* ignore */ }
+      render(); return;
+    }
 
     if (t.dataset.member)            { menuOpen = false; modal = { type: 'member', id: t.dataset.member, editing: false }; profErr = ''; render(); return; }
     if (t.hasAttribute('data-edit-profile'))   { if (modal) modal.editing = true; profErr = ''; render(); return; }
