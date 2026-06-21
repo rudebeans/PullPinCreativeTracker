@@ -18,6 +18,8 @@ create table if not exists public.profiles (
   email text,
   name text,
   color text,
+  role text,                 -- shown on member profiles (e.g. "Designer")
+  bio text,                  -- short blurb on member profiles
   created_at timestamptz default now()
 );
 
