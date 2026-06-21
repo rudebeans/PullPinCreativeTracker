@@ -43,7 +43,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: hidden; max-width: 100%; }
 body {
   font-family: var(--font);
   color: var(--ink);
@@ -424,7 +424,11 @@ button { cursor: pointer; border: none; background: none; }
 /* Mobile / responsive — sidebar becomes a scrollable top bar, grids stack   */
 /* ======================================================================== */
 @media (max-width: 760px) {
-  .app { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+  /* pin the animated gradient to the viewport — its 150% size caused iOS to
+     treat the overflow as horizontal scroll, stretching the whole layout */
+  .bg { inset: 0; }
+
+  .app { display: flex; flex-direction: column; height: auto; min-height: 100vh; max-width: 100%; }
 
   /* sidebar → sticky horizontal top bar */
   .sidebar {
