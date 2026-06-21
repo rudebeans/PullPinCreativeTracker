@@ -26,6 +26,7 @@
     user: null,
     profiles: [],
     recovery: false,
+    invite: false,
     start, signIn, signUp, signOut, resetPassword, updatePassword, updateMyProfile,
   });
 
@@ -61,15 +62,23 @@
   }
 
   async function start() {
-    // password-recovery deep links arrive as an auth event
+    // invite & password-reset links land here with a token in the URL hash
+    const h = window.__ctInitialHash || '';
+    if (/type=invite/.test(h)) { CTAuth.recovery = true; CTAuth.invite = true; }
+    else if (/type=recovery/.test(h)) { CTAuth.recovery = true; }
+
     C.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') { CTAuth.recovery = true; CTAuth.ready = true; notify(); return; }
       if (event === 'SIGNED_OUT') { CTAuth.user = null; CTAuth.profiles = []; CTAuth.ready = true; notify(); return; }
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') { applySession(session); }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (CTAuth.recovery) { CTAuth.user = session ? { id: session.user.id, email: session.user.email } : null; CTAuth.ready = true; notify(); return; } // hold on set-password screen
+        applySession(session);
+      }
     });
     try {
       const { data } = await C.auth.getSession();
-      if (!CTAuth.recovery) await applySession(data.session);
+      if (CTAuth.recovery) { CTAuth.ready = true; notify(); return; }
+      await applySession(data.session);
     } catch (e) {
       CTAuth.ready = true; notify();
     }
@@ -104,7 +113,7 @@
   async function updatePassword(newPassword) {
     const { error } = await C.auth.updateUser({ password: newPassword });
     if (error) throw error;
-    CTAuth.recovery = false;
+    CTAuth.recovery = false; CTAuth.invite = false;
     const { data } = await C.auth.getSession();
     await applySession(data.session);
   }

@@ -19,6 +19,9 @@
 (function () {
   'use strict';
 
+  // capture the URL hash before Supabase processes/clears it (invite & reset links arrive here)
+  if (window.__ctInitialHash === undefined) window.__ctInitialHash = window.location.hash || '';
+
   const cfg = window.CT_CONFIG || {};
   const URL = (cfg.SUPABASE_URL || '').trim();
   const KEY = (cfg.SUPABASE_ANON_KEY || '').trim();

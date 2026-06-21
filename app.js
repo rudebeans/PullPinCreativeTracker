@@ -348,12 +348,13 @@ Follow up with the printer about minimum order quantities.`;
     if (!A.ready) return authCard(`<p class="muted" style="text-align:center;padding:14px 0">Loading…</p>`);
 
     if (A.recovery) {
+      const inv = A.invite;
       return authCard(`
-        <h2 class="auth-h">Set a new password</h2>
-        <p class="auth-sub">Choose a new password for your account.</p>
-        <input id="auth-new-password" type="password" placeholder="New password" autocomplete="new-password" />
+        <h2 class="auth-h">${inv ? 'Welcome to PullPin Pulse 👋' : 'Set a new password'}</h2>
+        <p class="auth-sub">${inv ? 'Set a password to finish joining your team.' : 'Choose a new password for your account.'}</p>
+        <input id="auth-new-password" type="password" placeholder="${inv ? 'Choose a password' : 'New password'}" autocomplete="new-password" />
         ${authErr ? `<div class="auth-err">${esc(authErr)}</div>` : ''}
-        <button class="btn primary auth-btn" data-auth-reset-submit ${authBusy ? 'disabled' : ''}>${authBusy ? 'Saving…' : 'Update password'}</button>`);
+        <button class="btn primary auth-btn" data-auth-reset-submit ${authBusy ? 'disabled' : ''}>${authBusy ? 'Saving…' : (inv ? 'Set password & join' : 'Update password')}</button>`);
     }
     if (authMode === 'forgot') {
       return authCard(`
@@ -365,17 +366,15 @@ Follow up with the printer about minimum order quantities.`;
         <button class="btn primary auth-btn" data-auth-forgot ${authBusy ? 'disabled' : ''}>${authBusy ? 'Sending…' : 'Send reset link'}</button>
         <button class="auth-link" data-auth-switch="login">← Back to sign in</button>`);
     }
-    const signup = authMode === 'signup';
     return authCard(`
-      <h2 class="auth-h">${signup ? 'Create your account' : 'Welcome back'}</h2>
-      <p class="auth-sub">${signup ? "Join your team's workspace." : "Sign in to your team's workspace."}</p>
-      ${signup ? `<input id="auth-name" type="text" placeholder="Your name" autocomplete="name" />` : ''}
+      <h2 class="auth-h">Welcome back</h2>
+      <p class="auth-sub">Sign in to your team's workspace.</p>
       <input id="auth-email" type="email" placeholder="you@company.com" autocomplete="email" />
-      <input id="auth-password" type="password" placeholder="Password" autocomplete="${signup ? 'new-password' : 'current-password'}" />
+      <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
       ${authErr ? `<div class="auth-err">${esc(authErr)}</div>` : ''}
-      <button class="btn primary auth-btn" data-auth-submit ${authBusy ? 'disabled' : ''}>${authBusy ? '…' : (signup ? 'Create account' : 'Sign in')}</button>
-      ${!signup ? `<button class="auth-link" data-auth-switch="forgot">Forgot password?</button>` : ''}
-      <div class="auth-toggle">${signup ? 'Already have an account?' : "Don't have an account?"} <button class="auth-link" data-auth-switch="${signup ? 'login' : 'signup'}">${signup ? 'Sign in' : 'Sign up'}</button></div>`);
+      <button class="btn primary auth-btn" data-auth-submit ${authBusy ? 'disabled' : ''}>${authBusy ? '…' : 'Sign in'}</button>
+      <button class="auth-link" data-auth-switch="forgot">Forgot password?</button>
+      <div class="auth-toggle muted" style="font-size:11.5px">Invite only — ask your admin if you need access.</div>`);
   }
   function authFootHTML() {
     const A = window.CTAuth;
