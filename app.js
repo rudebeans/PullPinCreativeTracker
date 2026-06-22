@@ -53,6 +53,7 @@
   let fbType = 'idea';       // compose type for the feedback view
   let menuOpen = false;      // mobile hamburger menu open?
   let profErr = '';          // profile-edit error message
+  let mineOnly = (function () { try { return localStorage.getItem('pp-mine') === '1'; } catch (e) { return false; } })(); // "Mine" filter on Home/Energy
 
   /* ----------------------------------------------------------- lookups ---- */
   const projById  = (id) => data.projects.find((p) => p.id === id);
@@ -209,18 +210,25 @@
   }
 
   /* ----------------------------------------------------- triage buckets --- */
+  // "Mine" filter — focus on what's assigned to you (nothing is hidden from anyone; it's just a view)
+  function mineId() { const m = me(); return m ? m.id : null; }
+  function isMine(t) { return t.who === mineId(); }
+  function taskVisible(t) { return !mineOnly || isMine(t); }
+  function dlvVisible(d) { return !mineOnly || (projById(d.pid) && (projById(d.pid).team || []).includes(mineId())); } // your projects' deliverables
+
   function bucketItems() {
-    const open = data.tasks.filter((t) => t.status !== 'done');
+    const open = data.tasks.filter((t) => t.status !== 'done' && taskVisible(t));
+    const dlv = data.deliverables.filter(dlvVisible);
     const dueToday = [
       ...open.filter((t) => daysUntil(t.due) <= 0),
-      ...data.deliverables.filter((d) => !['approved','delivered'].includes(d.status) && daysUntil(d.due) <= 0)
+      ...dlv.filter((d) => !['approved','delivered'].includes(d.status) && daysUntil(d.due) <= 0)
         .map((d) => ({ ...d, _kind: 'deliverable' })),
     ];
     const review  = [...open.filter((t) => t.status === 'review'),
-                     ...data.deliverables.filter((d) => d.status === 'review').map((d) => ({ ...d, _kind: 'deliverable' }))];
+                     ...dlv.filter((d) => d.status === 'review').map((d) => ({ ...d, _kind: 'deliverable' }))];
     const blocked = open.filter((t) => t.status === 'blocked');
     const waiting = [...open.filter((t) => t.status === 'waiting'),
-                     ...data.deliverables.filter((d) => d.status === 'waiting').map((d) => ({ ...d, _kind: 'deliverable' }))];
+                     ...dlv.filter((d) => d.status === 'waiting').map((d) => ({ ...d, _kind: 'deliverable' }))];
     return { dueToday, review, blocked, waiting };
   }
 
@@ -229,7 +237,7 @@
 
   function dailyBrief() {
     const b = bucketItems();
-    const quick = data.tasks.filter((t) => t.status !== 'done' && t.energy === 'quick' && daysUntil(t.due) <= 1).length;
+    const quick = data.tasks.filter((t) => t.status !== 'done' && taskVisible(t) && t.energy === 'quick' && daysUntil(t.due) <= 1).length;
 
     const lines = [];
     const dueN = b.dueToday.length, revN = b.review.length, blkN = b.blocked.length;
@@ -274,7 +282,7 @@
   function statusLabel(st) { const o = STATUS_OPTS.find(([v]) => v === st); return o ? o[1] : st; }
 
   function focusOrder() {
-    return data.tasks.filter((t) => t.status !== 'done')
+    return data.tasks.filter((t) => t.status !== 'done' && taskVisible(t))
       .map((t) => ({ t, pr: taskPriority(t) }))
       .sort((a, z) => z.pr - a.pr).slice(0, 3)
       .map(({ t }) => ({ task: t, proj: projById(t.pid) }));
@@ -482,6 +490,14 @@ Follow up with the printer about minimum order quantities.`;
       </div>`;
   }
 
+  // "Mine / Everyone" filter toggle (nothing hidden — just a focused view)
+  function scopeToggleHTML() {
+    return `<div class="seg" role="group" aria-label="Show tasks for">
+      <button class="seg-btn${!mineOnly ? ' on' : ''}" data-scope="all">Everyone</button>
+      <button class="seg-btn${mineOnly ? ' on' : ''}" data-scope="mine">Mine</button>
+    </div>`;
+  }
+
   /* ------------------------------------------------------------- home ----- */
   function homeHTML() {
     const b = bucketItems();
@@ -498,6 +514,7 @@ Follow up with the printer about minimum order quantities.`;
       <div class="page-head">
         <div><h1>${greeting()}, ${esc(firstName(me()))} 👋</h1><div class="sub">${today} · here's what needs you</div></div>
         <div class="head-actions">
+          ${scopeToggleHTML()}
           <button class="btn" data-open="transcript"><span class="ic">✨</span> Transcript → Tasks</button>
         </div>
       </div>
@@ -541,7 +558,8 @@ Follow up with the printer about minimum order quantities.`;
     const p = projById(it.pid);
     const isTask = it._kind !== 'deliverable';
     const dc = dueClass(it.due);
-    return `<button class="item" data-open-project="${p.id}">
+    const mineCls = (isTask && isMine(it)) ? ' mine' : '';
+    return `<button class="item${mineCls}" data-open-project="${p.id}">
       <div class="it-top">
         ${isTask ? `<span class="check" data-toggle="${it.id}"></span>` : `<span class="muted" style="font-size:13px;margin-top:1px">📦</span>`}
         <span class="it-title">${esc(it.title)}</span>
@@ -549,6 +567,7 @@ Follow up with the printer about minimum order quantities.`;
       <div class="it-meta">
         <span class="it-client">${p.emoji} ${esc(p.client)}</span>
         <span class="due-flag ${dc}">${fmtDue(it.due)}</span>
+        ${isTask ? avatar(it.who) : ''}
       </div>
     </button>`;
   }
@@ -702,7 +721,7 @@ Follow up with the printer about minimum order quantities.`;
     if (t.id === editTaskId) return taskEditRow(t);
     const done = t.status === 'done';
     const sel = `<select class="t-status ${t.status}" data-set-status="${t.id}" aria-label="Status">${STATUS_OPTS.map(([v,l])=>`<option value="${v}"${v===t.status?' selected':''}>${l}</option>`).join('')}</select>`;
-    return `<div class="trow${done?' is-done':''}">
+    return `<div class="trow${done?' is-done':''}${isMine(t)?' mine':''}">
       ${checkBtn(t.id, done)}
       <span class="t-title">${esc(t.title)}</span>
       ${avatar(t.who)}
@@ -805,7 +824,7 @@ Follow up with the printer about minimum order quantities.`;
   function effEnergy(t) { return (t.status==='blocked'||t.status==='waiting') ? 'waiting' : t.energy; }
 
   function energyHTML() {
-    const open = data.tasks.filter((t)=>t.status!=='done');
+    const open = data.tasks.filter((t)=>t.status!=='done' && taskVisible(t));
     const cols = ENERGY_COLS.map((c) => {
       const items = open.filter((t)=>effEnergy(t)===c.key)
         .sort((a,z)=>daysUntil(a.due)-daysUntil(z.due));
@@ -820,19 +839,21 @@ Follow up with the printer about minimum order quantities.`;
 
     return `
       <div class="page-head">
-        <div><h1>Energy View</h1><div class="sub">Your open work, grouped by the kind of brain it needs — not just the date</div></div>
+        <div><h1>Energy View</h1><div class="sub">Open work, grouped by the kind of brain it needs — not just the date</div></div>
+        <div class="head-actions">${scopeToggleHTML()}</div>
       </div>
       <div class="energy-grid">${cols}</div>`;
   }
 
   function energyTask(t) {
     const p = projById(t.pid);
-    return `<div class="etask">
+    return `<div class="etask${isMine(t) ? ' mine' : ''}">
       ${checkBtn(t.id, false)}
       <button type="button" class="et-open" data-open-project="${t.pid}" style="flex:1;text-align:left;background:none;border:none">
         <div class="et-title">${esc(t.title)}</div>
         <div class="et-cli">${p.emoji} ${esc(p.client)} · ${fmtDue(t.due)}</div>
       </button>
+      ${avatar(t.who)}
     </div>`;
   }
 
@@ -1131,12 +1152,13 @@ Follow up with the printer about minimum order quantities.`;
 
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-theme-toggle],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-theme-toggle],[data-scope],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
     if (!t) return;
 
     if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
     if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
     if (t.hasAttribute('data-theme-toggle')) { cycleTheme(); return; }
+    if (t.dataset.scope) { mineOnly = (t.dataset.scope === 'mine'); try { localStorage.setItem('pp-mine', mineOnly ? '1' : '0'); } catch (e) { /* ignore */ } render(); return; }
 
     if (t.dataset.member)            { menuOpen = false; modal = { type: 'member', id: t.dataset.member, editing: false }; profErr = ''; render(); return; }
     if (t.hasAttribute('data-edit-profile'))   { if (modal) modal.editing = true; profErr = ''; render(); return; }

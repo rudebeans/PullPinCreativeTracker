@@ -235,7 +235,18 @@ button { cursor: pointer; border: none; background: none; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; gap: 20px; }
 .page-head h1 { font-size: 27px; font-weight: 660; letter-spacing: -.025em; }
 .page-head .sub { color: var(--ink-2); font-size: 13.5px; margin-top: 3px; font-weight: 500; }
-.head-actions { display: flex; gap: 9px; }
+.head-actions { display: flex; gap: 9px; align-items: center; }
+
+/* "Mine / Everyone" segmented filter */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 11px; background: var(--fill); border: 1px solid var(--glass-border); }
+.seg-btn { font-size: 12.5px; font-weight: 560; padding: 6px 12px; border-radius: 8px; color: var(--ink-2); white-space: nowrap; }
+.seg-btn:hover { color: var(--ink); }
+.seg-btn.on { background: var(--glass-strong); color: var(--ink); box-shadow: var(--shadow), var(--sheen); font-weight: 640; }
+
+/* a task assigned to you — subtle accent so it stands out in the team view */
+.item.mine { box-shadow: inset 3px 0 0 var(--accent); }
+.etask.mine { box-shadow: inset 3px 0 0 var(--accent); }
+.trow.mine { box-shadow: inset 3px 0 0 var(--accent); border-radius: 4px; }
 
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
