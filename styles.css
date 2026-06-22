@@ -355,17 +355,26 @@ button { cursor: pointer; border: none; background: none; }
   100% { box-shadow: 0 0 0 0 transparent, var(--shadow), var(--sheen); }
 }
 
-/* completing a task: tick → hold the win → graceful collapse (not an abrupt pop) */
-.item.completing, .etask.completing { pointer-events: none; overflow: hidden; animation: taskDone .9s cubic-bezier(.4,0,.2,1) forwards; }
-.item.completing { background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
-.etask.completing { background: var(--good-bg); }
+/* completing a task: tick → HOLD the green "done" state → graceful collapse.
+   Data doesn't change until the animation ends (see flashComplete), so this
+   always plays in full instead of being yanked away by a re-render. */
+.item.completing, .etask.completing {
+  pointer-events: none; overflow: hidden;
+  background: var(--good-bg);
+  border-color: color-mix(in srgb, var(--good) 50%, transparent);
+  box-shadow: inset 3px 0 0 var(--good);
+  animation: taskDone 1.15s cubic-bezier(.4,0,.2,1) forwards;
+}
 .item.completing .it-title, .etask.completing .et-title { text-decoration: line-through; color: var(--ink-3); }
-.completing .check { animation: checkPop .32s cubic-bezier(.2,.9,.3,1.3); }
-@keyframes checkPop { 0% { transform: scale(.55); } 55% { transform: scale(1.28); } 100% { transform: scale(1); } }
+.completing .check { background: var(--good); border-color: var(--good); animation: checkPop .42s cubic-bezier(.2,.9,.3,1.5); }
+.completing .check::after { content: "✓"; color: #fff; font-size: 11px; font-weight: 800; }
+@keyframes checkPop { 0% { transform: scale(.35); } 50% { transform: scale(1.38); } 100% { transform: scale(1); } }
 @keyframes taskDone {
-  0%   { max-height: 160px; opacity: 1; transform: none; }
-  45%  { max-height: 160px; opacity: 1; transform: none; }
-  100% { max-height: 0; opacity: 0; transform: translateX(10px); padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; border-width: 0; }
+  0%   { max-height: 220px; opacity: 1; transform: none; }
+  7%   { transform: scale(1.02); }
+  16%  { transform: scale(1); }
+  62%  { max-height: 220px; opacity: 1; transform: none; }   /* hold the win ~0.7s */
+  100% { max-height: 0; opacity: 0; transform: translateX(14px); padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; border-width: 0; }
 }
 
 /* ----------------------------------------------------------- project grid - */

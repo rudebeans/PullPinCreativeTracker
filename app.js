@@ -1010,7 +1010,10 @@ Follow up with the printer about minimum order quantities.`;
   }
 
   /* ====================================================== ACTIONS ========= */
-  let completeTimer = null;
+  // ids mid-completion-animation. Their data change is held until the beat ends,
+  // so neither our own save nor a realtime sync echo can re-render and yank the
+  // card away while it's still playing. __ctApplyRemote also defers while this is non-empty.
+  const pendingComplete = new Set();
   // toast with an Undo that reverts a *completion* (vs deletion). 5s window.
   function completeToast(id) {
     document.querySelectorAll('.toast').forEach((t)=>t.remove());
@@ -1019,28 +1022,38 @@ Follow up with the printer about minimum order quantities.`;
     document.body.appendChild(el);
     clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.remove(), 5000);
   }
+  function markDone(t) { t.status = 'done'; t.doneAt = new Date().toISOString(); t.up = 0; }
   function toggleTask(id) {
     const t = data.tasks.find((x)=>x.id===id); if (!t) return;
     if (t.status === 'done') { t.status = 'todo'; delete t.doneAt; t.up = 0; save(); render(); return; }
-    t.status = 'done'; t.doneAt = new Date().toISOString(); t.up = 0; save(); render(); completeToast(id);
+    markDone(t); save(); render(); completeToast(id);
   }
-  // completing from a Home/Energy list: tick the box, hold the win for a beat,
-  // then gracefully collapse it out (instead of vanishing on the spot).
+  // completing from a Home/Energy list: tick the box, HOLD the green "done" state
+  // for a clear beat, THEN collapse it out. The task isn't marked done / saved
+  // until the beat finishes — that's what stops a sync echo cutting it short.
   function flashComplete(id, btn, card) {
     const t = data.tasks.find((x)=>x.id===id); if (!t) return;
     if (t.status === 'done') { toggleTask(id); return; }   // safety: un-complete via normal path
-    t.status = 'done'; t.doneAt = new Date().toISOString(); t.up = 0; save();
     btn.classList.add('done');
     card.classList.add('completing');
+    pendingComplete.add(id);
     completeToast(id);
-    clearTimeout(completeTimer);
-    completeTimer = setTimeout(render, 920);               // let the check + collapse play, then re-render
+    setTimeout(() => {
+      if (!pendingComplete.has(id)) return;                 // undone during the beat — leave it open
+      pendingComplete.delete(id);
+      const tk = data.tasks.find((x)=>x.id===id);
+      if (tk) { markDone(tk); save(); }
+      render();
+    }, 1150);
   }
   function undoComplete(id) {
+    document.querySelectorAll('.toast').forEach((x)=>x.remove());
+    if (pendingComplete.has(id)) {                          // cancel before it ever commits
+      pendingComplete.delete(id);
+      render(); toast('Kept it open ↩'); return;
+    }
     const t = data.tasks.find((x)=>x.id===id);
     if (t) { t.status = 'todo'; delete t.doneAt; t.up = 0; save(); }
-    clearTimeout(completeTimer);
-    document.querySelectorAll('.toast').forEach((x)=>x.remove());
     render(); toast('Brought it back ↩');
   }
   function setStatus(id, val) {
@@ -1371,7 +1384,7 @@ Follow up with the printer about minimum order quantities.`;
     remote = migrate(remote);
     if (JSON.stringify(remote) === JSON.stringify(data)) return;       // no-op / our own echo
     const ae = document.activeElement;
-    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) {          // don't clobber an in-progress edit
+    if (pendingComplete.size || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))) { // don't clobber an in-progress edit or a completion animation
       clearTimeout(window.__ctRemoteRetry);
       window.__ctRemotePending = remote;
       window.__ctRemoteRetry = setTimeout(() => { const p = window.__ctRemotePending; window.__ctRemotePending = null; if (p) window.__ctApplyRemote(p); }, 1500);
