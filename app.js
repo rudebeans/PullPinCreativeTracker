@@ -133,6 +133,10 @@
 
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
   function firstName(m) { return m ? m.name.split(' ')[0] : 'there'; }
+  // <option> list of the team for an assignee picker, with one preselected
+  function teamOptions(selId) {
+    return getTeam().map((m) => `<option value="${m.id}"${m.id === selId ? ' selected' : ''}>👤 ${esc(firstName(m))}${m.you ? ' (You)' : ''}</option>`).join('');
+  }
 
   /* ---------------------------------------------------- momentum score ---- */
   function scoreMeta(s) {
@@ -546,6 +550,7 @@ Follow up with the printer about minimum order quantities.`;
           <select id="qa-energy" class="sel" style="border:none">
             <option value="quick">⚡ Quick</option><option value="deep">🧠 Deep</option><option value="creative">🎨 Creative</option>
           </select>
+          <select id="qa-who" class="sel" style="border:none" aria-label="Assign to" title="Assign to">${teamOptions(mineId())}</select>
           <button type="button" class="btn primary qa-add" data-qa-add>＋ Add task</button>
         </div>
       </div>`;
@@ -686,6 +691,7 @@ Follow up with the printer about minimum order quantities.`;
             <div class="add-row">
               <input id="dt-task" placeholder="Add a task — press Enter…" data-add-task="${pid}" autocomplete="off" />
               <select id="dt-energy" class="sel" aria-label="Energy mode" title="Energy mode"><option value="quick">⚡ Quick</option><option value="deep">🧠 Deep</option><option value="creative">🎨 Creative</option></select>
+              <select id="dt-who" class="sel" aria-label="Assign to" title="Assign to">${teamOptions(mineId())}</select>
             </div>
             ${taskRows}
           </div>
@@ -1047,11 +1053,11 @@ Follow up with the printer about minimum order quantities.`;
     const d = data.deliverables.find((x)=>x.id===id); if (!d) return;
     d.status = val; d.up = 0; save(); render();
   }
-  function addTask(pid, title, energy) {
+  function addTask(pid, title, energy, who) {
     title = (title||'').trim(); if (!title) return;
     const id = 't' + Date.now().toString(36);
-    data.tasks.push({ id, pid, title, status:'todo', energy: energy||'quick', who: me().id, due: new Date(Date.now()+DAY).toISOString(), up: 0 });
-    save(); toast('Task added');
+    data.tasks.push({ id, pid, title, status:'todo', energy: energy||'quick', who: who || me().id, due: new Date(Date.now()+DAY).toISOString(), up: 0 });
+    save(); const m = memById(who || me().id); toast(`Task added${m && !m.you ? ' · assigned to ' + firstName(m) : ''}`);
   }
   function addNote(pid, body) {
     body = (body||'').trim(); if (!body) return;
@@ -1206,8 +1212,9 @@ Follow up with the printer about minimum order quantities.`;
     if (t.hasAttribute('data-qa-add')) {
       const pid = (document.getElementById('qa-proj') || {}).value || data.projects[0].id;
       const energy = (document.getElementById('qa-energy') || {}).value || 'quick';
+      const who = (document.getElementById('qa-who') || {}).value;
       const inp = document.getElementById('qa-input');
-      addTask(pid, inp ? inp.value : '', energy);
+      addTask(pid, inp ? inp.value : '', energy, who);
       refocusId = 'qa-input'; render();
       return;
     }
@@ -1316,14 +1323,16 @@ Follow up with the printer about minimum order quantities.`;
       e.preventDefault();
       const pid = (document.getElementById('qa-proj')||{}).value || data.projects[0].id;
       const energy = (document.getElementById('qa-energy')||{}).value || 'quick';
-      addTask(pid, el.value, energy);
+      const who = (document.getElementById('qa-who')||{}).value;
+      addTask(pid, el.value, energy, who);
       refocusId = 'qa-input'; render();
       return;
     }
     if (el.dataset.addTask) {
       e.preventDefault();
       const energy = (document.getElementById('dt-energy') || {}).value || 'quick';
-      addTask(el.dataset.addTask, el.value, energy);
+      const who = (document.getElementById('dt-who') || {}).value;
+      addTask(el.dataset.addTask, el.value, energy, who);
       refocusId = 'dt-task'; render();
       return;
     }

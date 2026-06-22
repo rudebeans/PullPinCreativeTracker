@@ -593,8 +593,13 @@ button { cursor: pointer; border: none; background: none; }
   .quick-add .qa-wrap { flex-wrap: wrap; gap: 9px 8px; padding: 12px; }
   .quick-add .qa-plus { display: none; }                 /* placeholder already says "Add a task…" */
   .quick-add input { flex: 1 1 100%; }
-  .quick-add select { flex: 1 1 calc(50% - 4px); min-width: 0; max-width: none; background: var(--fill); border: 1px solid var(--glass-border); border-radius: 9px; padding: 9px 8px; color: var(--ink); }
+  .quick-add select { flex: 1 1 calc(33.333% - 6px); min-width: 0; max-width: none; background: var(--fill); border: 1px solid var(--glass-border); border-radius: 9px; padding: 9px 6px; color: var(--ink); font-size: 12px; }
   .quick-add .qa-add { flex: 1 1 100%; justify-content: center; padding: 11px; }
+
+  /* detail add-row also wraps so the assignee picker never clips */
+  .add-row { flex-wrap: wrap; }
+  .add-row input { flex: 1 1 100%; }
+  .add-row .sel { flex: 1 1 calc(50% - 4px); min-width: 0; }
 }
 
 /* respect reduced-motion for the new completion/jump flourishes */
