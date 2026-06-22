@@ -21,6 +21,28 @@
     if (memFallback) return memFallback;
     return seedClone();
   }
+  // collision-proof id — timestamp alone repeats when several items are added in
+  // the same millisecond (e.g. the transcript loop), which used to mint duplicate ids.
+  let _idSeq = 0;
+  function genId(prefix) { return prefix + Date.now().toString(36) + (_idSeq++).toString(36) + Math.random().toString(36).slice(2, 6); }
+  // repair any array that already has duplicate/blank ids. Deterministic (keeps the
+  // first, reindexes the rest) so it's idempotent and agrees across synced clients —
+  // no random ids here, or remote/local copies would never reconcile.
+  function dedupeIds(arr) {
+    if (!Array.isArray(arr)) return false;
+    const seen = new Set(); let changed = false;
+    arr.forEach((item, i) => {
+      if (!item) return;
+      if (!item.id || seen.has(item.id)) {
+        let nid = (String(item.id || 'x')) + '_' + i;     // stable: derived from position
+        while (seen.has(nid)) nid += 'x';
+        item.id = nid; changed = true;
+      }
+      seen.add(item.id);
+    });
+    return changed;
+  }
+
   // one-time fixups for already-saved state — keeps the user's test data intact
   function migrate(d) {
     const renamed = { 'Existential Dread Coffee': "Chad's Rash Cream Co." };
@@ -28,6 +50,9 @@
     (d.projects || []).forEach((p) => { if (renamed[p.client]) { p.client = renamed[p.client]; changed = true; } });
     if (!Array.isArray(d.assets)) d.assets = [];       // assets added later — ensure the array exists
     if (!Array.isArray(d.feedback)) d.feedback = [];   // feedback added later — ensure the array exists
+    // heal duplicate ids (the transcript loop minted same-ms collisions) so a
+    // status/edit/check on one item can never hit a different row
+    ['tasks', 'deliverables', 'notes', 'assets', 'feedback'].forEach((k) => { if (dedupeIds(d[k])) changed = true; });
     if (changed) { try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch (e) { /* ignore */ } }
     return d;
   }
@@ -1068,19 +1093,19 @@ Follow up with the printer about minimum order quantities.`;
   }
   function addTask(pid, title, energy, who) {
     title = (title||'').trim(); if (!title) return;
-    const id = 't' + Date.now().toString(36);
+    const id = genId('t');
     data.tasks.push({ id, pid, title, status:'todo', energy: energy||'quick', who: who || me().id, due: new Date(Date.now()+DAY).toISOString(), up: 0 });
     save(); const m = memById(who || me().id); toast(`Task added${m && !m.you ? ' · assigned to ' + firstName(m) : ''}`);
   }
   function addNote(pid, body) {
     body = (body||'').trim(); if (!body) return;
-    data.notes.push({ id:'n'+Date.now().toString(36), pid, who: me().id, body, at: new Date().toISOString() });
+    data.notes.push({ id: genId('n'), pid, who: me().id, body, at: new Date().toISOString() });
     save(); render(); toast('Note added');
   }
   function addFeedback(body) {
     body = (body || '').trim(); if (!body) return;
     if (!data.feedback) data.feedback = [];
-    data.feedback.unshift({ id: 'fb' + Date.now().toString(36), type: fbType, body, by: me().id, at: new Date().toISOString(), status: 'open', votes: [] });
+    data.feedback.unshift({ id: genId('fb'), type: fbType, body, by: me().id, at: new Date().toISOString(), status: 'open', votes: [] });
     save(); render(); toast('Feedback sent — thanks! 🙌');
   }
   function voteFeedback(id) {
@@ -1100,12 +1125,12 @@ Follow up with the printer about minimum order quantities.`;
     url = (url || '').trim(); if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;       // be forgiving about pasted links
     if (!data.assets) data.assets = [];
-    data.assets.push({ id: 'as' + Date.now().toString(36), pid, title: prettyName(url), url, type: assetType(url), by: me().id, at: new Date().toISOString() });
+    data.assets.push({ id: genId('as'), pid, title: prettyName(url), url, type: assetType(url), by: me().id, at: new Date().toISOString() });
     save(); toast('Asset linked');
   }
   function addDeliverable(pid, title) {
     title = (title||'').trim(); if (!title) return;
-    data.deliverables.push({ id:'d'+Date.now().toString(36), pid, title, status:'draft', due: new Date(Date.now()+7*DAY).toISOString(), up: 0 });
+    data.deliverables.push({ id: genId('d'), pid, title, status:'draft', due: new Date(Date.now()+7*DAY).toISOString(), up: 0 });
     save(); toast('Deliverable added');
   }
 
