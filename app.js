@@ -438,9 +438,22 @@ Follow up with the printer about minimum order quantities.`;
     </aside>`;
   }
 
-  function currentTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
+  const THEME_LABEL = { dark: '🌙 Dark', light: '☀️ Light', auto: '🌗 Auto' };
+  function themePref() { try { return localStorage.getItem('pp-theme') || 'dark'; } catch (e) { return 'dark'; } }
+  function applyTheme(pref) {
+    const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = pref === 'auto' ? (sysDark ? 'dark' : 'light') : pref;
+    document.documentElement.setAttribute('data-theme', resolved);
+  }
+  function cycleTheme() {
+    const order = ['dark', 'light', 'auto'];
+    const next = order[(order.indexOf(themePref()) + 1) % order.length];
+    try { localStorage.setItem('pp-theme', next); } catch (e) { /* ignore */ }
+    applyTheme(next); render();
+  }
   function themeToggleHTML() {
-    return `<button class="ghost-btn" data-theme-toggle>${currentTheme() === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>`;
+    const p = themePref();
+    return `<button class="ghost-btn" data-theme-toggle title="Theme: ${p} — tap to change">${THEME_LABEL[p]}</button>`;
   }
 
   function syncStatusHTML() {
@@ -464,7 +477,7 @@ Follow up with the printer about minimum order quantities.`;
         <div class="team-row" style="padding:5px 8px">${avatarStack(getTeam().map((m)=>m.id))}<span class="muted" style="font-size:12px">${getTeam().length} ${getTeam().length===1?'person':'people'}</span></div>
         ${syncStatusHTML()}
         ${authFootHTML()}
-        <button class="mm-item" data-theme-toggle><span class="ic">${currentTheme() === 'dark' ? '☀️' : '🌙'}</span> ${currentTheme() === 'dark' ? 'Light mode' : 'Dark mode'}</button>
+        <button class="mm-item" data-theme-toggle><span class="ic">${themePref() === 'auto' ? '🌗' : (themePref() === 'dark' ? '🌙' : '☀️')}</span> Theme: ${themePref()}</button>
         <button class="mm-item" data-reset><span class="ic">↺</span> Reset demo</button>
       </div>`;
   }
@@ -1123,12 +1136,7 @@ Follow up with the printer about minimum order quantities.`;
 
     if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
     if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
-    if (t.hasAttribute('data-theme-toggle')) {
-      const nx = currentTheme() === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', nx);
-      try { localStorage.setItem('pp-theme', nx); } catch (e) { /* ignore */ }
-      render(); return;
-    }
+    if (t.hasAttribute('data-theme-toggle')) { cycleTheme(); return; }
 
     if (t.dataset.member)            { menuOpen = false; modal = { type: 'member', id: t.dataset.member, editing: false }; profErr = ''; render(); return; }
     if (t.hasAttribute('data-edit-profile'))   { if (modal) modal.editing = true; profErr = ''; render(); return; }
@@ -1293,6 +1301,11 @@ Follow up with the printer about minimum order quantities.`;
   };
 
   /* ------------------------------------------------------------ go -------- */
+  // keep "Auto" theme in sync with the OS as it changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themePref() === 'auto') applyTheme('auto'); });
+  }
+
   window.__ctOnAuth = render;            // re-render on any auth change
   render();
   if (window.CTAuth && window.CTAuth.configured) window.CTAuth.start();   // gate → login → sync

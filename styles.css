@@ -35,12 +35,12 @@
   --shadow:    0 2px 8px rgba(0,0,0,0.35), 0 16px 40px rgba(0,0,0,0.5);
   --shadow-lg: 0 16px 64px rgba(0,0,0,0.65);
 
-  /* semantic — brightened for dark */
-  --due:     #8b7bff;  --due-bg:     rgba(139,123,255,.18);
-  --review:  #f5a623;  --review-bg:  rgba(245,166,35,.18);
-  --blocked: #fb7185;  --blocked-bg: rgba(251,113,133,.18);
-  --waiting: #38bdf8;  --waiting-bg: rgba(56,189,248,.18);
-  --good:    #34d399;  --good-bg:    rgba(52,211,153,.18);
+  /* semantic — brightened + more present on dark */
+  --due:     #9b8cff;  --due-bg:     rgba(139,123,255,.24);
+  --review:  #f7b342;  --review-bg:  rgba(245,166,35,.24);
+  --blocked: #fb7f90;  --blocked-bg: rgba(251,113,133,.24);
+  --waiting: #4cc4f9;  --waiting-bg: rgba(56,189,248,.24);
+  --good:    #44dba6;  --good-bg:    rgba(52,211,153,.24);
 }
 
 /* ===== LIGHT theme — opt-in ===== */
