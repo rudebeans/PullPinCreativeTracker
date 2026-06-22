@@ -235,26 +235,32 @@
   /* ------------------------------------------------------ daily brief ----- */
   function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
+  // inline jump-link inside the brief — scrolls to a triage column (#col-…) or
+  // switches view ("view:energy"). Lets a glanced number take you to the list.
+  function jumpEl(target, inner) { return `<button type="button" class="brief-link" data-jump="${target}">${inner}</button>`; }
+  // inline link that opens a project (for the named items mentioned in the brief)
+  function projEl(pid, inner) { return `<button type="button" class="brief-link" data-open-project="${pid}">${inner}</button>`; }
+
   function dailyBrief() {
     const b = bucketItems();
     const quick = data.tasks.filter((t) => t.status !== 'done' && taskVisible(t) && t.energy === 'quick' && daysUntil(t.due) <= 1).length;
 
     const lines = [];
     const dueN = b.dueToday.length, revN = b.review.length, blkN = b.blocked.length;
-    lines.push(`${greeting()}, ${firstName(me())}. You've got <b>${dueN} item${dueN!==1?'s':''}</b> on the runway today${revN ? ` and <b>${revN}</b> waiting on your review` : ''}.`);
+    lines.push(`${greeting()}, ${firstName(me())}. You've got ${jumpEl('col-due', `<b>${dueN} item${dueN!==1?'s':''}</b>`)} on the runway today${revN ? ` and ${jumpEl('col-review', `<b>${revN}</b>`)} waiting on your review` : ''}.`);
 
     if (blkN > 0) {
       const worst = [...b.blocked].sort((a, z) => (z.up||0) - (a.up||0))[0];
       const p = projById(worst.pid);
-      lines.push(`Heads up — <b>${blkN} item${blkN>1?'s are':' is'} blocked</b>, including “${esc(worst.title)}” for ${esc(p.client)}.`);
+      lines.push(`Heads up — ${jumpEl('col-blocked', `<b>${blkN} item${blkN>1?'s are':' is'} blocked</b>`)}, including ${projEl(worst.pid, `“${esc(worst.title)}”`)} for ${esc(p.client)}.`);
     }
     const stale = [...data.tasks, ...data.deliverables].filter((x) => x.status === 'waiting' && (x.up||0) > 7)
       .sort((a, z) => (z.up||0) - (a.up||0))[0];
     if (stale) {
       const p = projById(stale.pid);
-      lines.push(`${esc(p.client)} has been quiet on “${esc(stale.title)}” for <b>${stale.up} days</b> — probably worth a nudge.`);
+      lines.push(`${esc(p.client)} has been quiet on ${projEl(stale.pid, `“${esc(stale.title)}”`)} for ${jumpEl('col-waiting', `<b>${stale.up} days</b>`)} — probably worth a nudge.`);
     }
-    if (quick > 0) lines.push(`Tip: clear your <b>${quick} quick win${quick>1?'s':''}</b> first to build momentum, then protect a block for deep work.`);
+    if (quick > 0) lines.push(`Tip: clear your ${jumpEl('view:energy', `<b>${quick} quick win${quick>1?'s':''}</b>`)} first to build momentum, then protect a block for deep work.`);
 
     return { paragraphs: lines, focus: focusOrder() };
   }
@@ -526,29 +532,30 @@ Follow up with the printer about minimum order quantities.`;
       </section>
 
       <div class="triage">
-        ${triageCol('Due Today', 'var(--due)', b.dueToday, '🎉', 'Nothing due today. Breathe.')}
-        ${triageCol('Needs Review', 'var(--review)', b.review, '👀', 'No reviews waiting on you.')}
-        ${triageCol('Blocked', 'var(--blocked)', b.blocked, '🛑', 'Nothing blocked. Smooth sailing.')}
-        ${triageCol('Waiting on Client', 'var(--waiting)', b.waiting, '📨', 'No client balls in their court.')}
+        ${triageCol('col-due', 'Due Today', 'var(--due)', b.dueToday, '🎉', 'Nothing due today. Breathe.')}
+        ${triageCol('col-review', 'Needs Review', 'var(--review)', b.review, '👀', 'No reviews waiting on you.')}
+        ${triageCol('col-blocked', 'Blocked', 'var(--blocked)', b.blocked, '🛑', 'Nothing blocked. Smooth sailing.')}
+        ${triageCol('col-waiting', 'Waiting on Client', 'var(--waiting)', b.waiting, '📨', 'No client balls in their court.')}
       </div>
 
       <div class="quick-add">
         <div class="qa-wrap">
-          <span class="muted">＋</span>
-          <input id="qa-input" placeholder="Add a task and press Enter…" autocomplete="off" />
+          <span class="muted qa-plus">＋</span>
+          <input id="qa-input" placeholder="Add a task…" autocomplete="off" />
           <select id="qa-proj" class="sel" style="border:none">${data.projects.map((p)=>`<option value="${p.id}">${p.emoji} ${esc(p.client)}</option>`).join('')}</select>
           <select id="qa-energy" class="sel" style="border:none">
             <option value="quick">⚡ Quick</option><option value="deep">🧠 Deep</option><option value="creative">🎨 Creative</option>
           </select>
+          <button type="button" class="btn primary qa-add" data-qa-add>＋ Add task</button>
         </div>
       </div>`;
   }
 
-  function triageCol(title, color, items, em, emptyMsg) {
+  function triageCol(id, title, color, items, em, emptyMsg) {
     const body = items.length
       ? items.map((it) => homeItem(it)).join('')
       : `<div class="col-empty"><span class="em">${em}</span>${emptyMsg}</div>`;
-    return `<div class="col">
+    return `<div class="col" id="${id}">
       <div class="col-head"><span class="dot" style="background:${color}"></span><h3>${title}</h3><span class="count">${items.length}</span></div>
       <div class="col-body">${body}</div>
     </div>`;
@@ -997,11 +1004,38 @@ Follow up with the printer about minimum order quantities.`;
   }
 
   /* ====================================================== ACTIONS ========= */
+  let completeTimer = null;
+  // toast with an Undo that reverts a *completion* (vs deletion). 5s window.
+  function completeToast(id) {
+    document.querySelectorAll('.toast').forEach((t)=>t.remove());
+    const el = document.createElement('div'); el.className = 'toast';
+    el.innerHTML = `<span>Nice — task done ✓</span><button type="button" class="undo-btn" data-undo-complete="${id}">Undo</button>`;
+    document.body.appendChild(el);
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>el.remove(), 5000);
+  }
   function toggleTask(id) {
     const t = data.tasks.find((x)=>x.id===id); if (!t) return;
-    if (t.status === 'done') { t.status = 'todo'; delete t.doneAt; }
-    else { t.status = 'done'; t.doneAt = new Date().toISOString(); toast('Nice — task done ✓'); }
-    t.up = 0; save(); render();
+    if (t.status === 'done') { t.status = 'todo'; delete t.doneAt; t.up = 0; save(); render(); return; }
+    t.status = 'done'; t.doneAt = new Date().toISOString(); t.up = 0; save(); render(); completeToast(id);
+  }
+  // completing from a Home/Energy list: tick the box, hold the win for a beat,
+  // then gracefully collapse it out (instead of vanishing on the spot).
+  function flashComplete(id, btn, card) {
+    const t = data.tasks.find((x)=>x.id===id); if (!t) return;
+    if (t.status === 'done') { toggleTask(id); return; }   // safety: un-complete via normal path
+    t.status = 'done'; t.doneAt = new Date().toISOString(); t.up = 0; save();
+    btn.classList.add('done');
+    card.classList.add('completing');
+    completeToast(id);
+    clearTimeout(completeTimer);
+    completeTimer = setTimeout(render, 920);               // let the check + collapse play, then re-render
+  }
+  function undoComplete(id) {
+    const t = data.tasks.find((x)=>x.id===id);
+    if (t) { t.status = 'todo'; delete t.doneAt; t.up = 0; save(); }
+    clearTimeout(completeTimer);
+    document.querySelectorAll('.toast').forEach((x)=>x.remove());
+    render(); toast('Brought it back ↩');
   }
   function setStatus(id, val) {
     const t = data.tasks.find((x)=>x.id===id); if (!t) return;
@@ -1152,13 +1186,31 @@ Follow up with the printer about minimum order quantities.`;
 
   /* delegated click */
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-theme-toggle],[data-scope],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile]');
+    const t = e.target.closest('[data-nav],[data-open-project],[data-toggle],[data-open],[data-close-modal],[data-stop],[data-extract],[data-add-extracted],[data-fill-sample],[data-summarize],[data-add-note],[data-reset],[data-ex-check],[data-edit-task],[data-save-task],[data-del-task],[data-edit-dlv],[data-save-dlv],[data-del-dlv],[data-edit-note],[data-save-note],[data-del-note],[data-del-asset],[data-cancel-edit],[data-undo],[data-fb-type],[data-fb-submit],[data-fb-vote],[data-del-fb],[data-auth-switch],[data-auth-submit],[data-auth-forgot],[data-auth-reset-submit],[data-do-logout],[data-menu-toggle],[data-menu-close],[data-theme-toggle],[data-scope],[data-member],[data-edit-profile],[data-cancel-profile],[data-save-profile],[data-jump],[data-qa-add],[data-undo-complete]');
     if (!t) return;
 
     if (t.hasAttribute('data-menu-toggle')) { menuOpen = !menuOpen; render(); return; }
     if (t.hasAttribute('data-menu-close'))  { menuOpen = false; render(); return; }
     if (t.hasAttribute('data-theme-toggle')) { cycleTheme(); return; }
     if (t.dataset.scope) { mineOnly = (t.dataset.scope === 'mine'); try { localStorage.setItem('pp-mine', mineOnly ? '1' : '0'); } catch (e) { /* ignore */ } render(); return; }
+
+    // brief jump-links: scroll to a triage column, or switch to another view
+    if (t.dataset.jump) {
+      const tgt = t.dataset.jump;
+      if (tgt.indexOf('view:') === 0) { menuOpen = false; view.name = tgt.slice(5); view.projectId = null; render(); return; }
+      const el = document.getElementById(tgt);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('jump-flash'); setTimeout(() => el.classList.remove('jump-flash'), 1100); }
+      return;
+    }
+    if (t.dataset.undoComplete) { undoComplete(t.dataset.undoComplete); return; }
+    if (t.hasAttribute('data-qa-add')) {
+      const pid = (document.getElementById('qa-proj') || {}).value || data.projects[0].id;
+      const energy = (document.getElementById('qa-energy') || {}).value || 'quick';
+      const inp = document.getElementById('qa-input');
+      addTask(pid, inp ? inp.value : '', energy);
+      refocusId = 'qa-input'; render();
+      return;
+    }
 
     if (t.dataset.member)            { menuOpen = false; modal = { type: 'member', id: t.dataset.member, editing: false }; profErr = ''; render(); return; }
     if (t.hasAttribute('data-edit-profile'))   { if (modal) modal.editing = true; profErr = ''; render(); return; }
@@ -1176,7 +1228,7 @@ Follow up with the printer about minimum order quantities.`;
 
     if (t.dataset.nav)         { menuOpen = false; view.name = t.dataset.nav; view.projectId = null; render(); return; }
     if (t.dataset.openProject) { menuOpen = false; view.name = 'project'; view.projectId = t.dataset.openProject; if (modal) modal=null; render(); return; }
-    if (t.dataset.toggle)      { toggleTask(t.dataset.toggle); return; }
+    if (t.dataset.toggle)      { const card = t.closest('.item, .etask'); if (card) flashComplete(t.dataset.toggle, t, card); else toggleTask(t.dataset.toggle); return; }
 
     if (t.dataset.open === 'transcript') { menuOpen = false; modal = { type:'transcript', text:'', extracted:[] }; render(); const x=document.getElementById('transcript-text'); if(x)x.focus(); return; }
     if (t.hasAttribute('data-fill-sample')) { modal.text = SAMPLE_TRANSCRIPT; modal.extracted = []; render(); return; }
